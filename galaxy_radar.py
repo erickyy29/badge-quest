@@ -86,6 +86,10 @@ SHOWCASE = (
     "production-ready", "feedback welcome", "would love feedback",
     "sharing my", "just shipped", "just launched", "show and tell",
     "here's a", "i created", "open-sourced",
+    # recruitment for someone else's product — "help testing" slips past the
+    # question-word exemption below, so match it outright
+    "beta key", "beta test", "help testing", "looking for testers",
+    "ui kit", "early access", "waitlist", "free beta", "try my",
 )
 
 QUESTION_WORDS = {
