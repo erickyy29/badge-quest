@@ -22,6 +22,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import urllib.error
@@ -45,20 +46,48 @@ REPOS = [
 # what you've actually shipped and can defend in a review — keyword: weight.
 # Edit freely; anything not in here scores 0 and drops off the list.
 EXPERTISE = {
-    "prisma": 3, "supabase": 3, "sqlite": 3, "postgres": 2, "migration": 2,
+    # data layer — as used from an app, not as a DBA
+    "prisma": 3, "supabase": 2, "sqlite": 3, "migration": 2, "prisma client": 3,
     "pooler": 3, "supavisor": 3, "pgbouncer": 3, "connection limit": 3,
-    "app router": 3, "server action": 3, "route handler": 2, "middleware": 2,
-    "server component": 2, "use client": 2, "hydration": 2, "revalidate": 2,
+    "too many connections": 3, "rls": 2, "row level security": 2,
+    # next.js app router, the thing every project here is built on
+    "app router": 3, "server action": 3, "route handler": 3, "middleware": 2,
+    "server component": 3, "use client": 3, "hydration": 3, "revalidate": 3,
+    "next 16": 3, "next.js 16": 3, "turbopack": 2, "edge runtime": 2,
+    # scraping — the undici/WAF territory from binky-ugc-dashboard and orbit
     "playwright": 3, "scrape": 3, "scraping": 3, "headless": 2, "cheerio": 2,
-    "recharts": 3, "chart": 2, "responsivecontainer": 3, "tooltip": 1,
-    "framer": 2, "motion": 1, "animation": 1,
-    "tailwind": 2, "shadcn": 2, "radix": 1,
-    "vercel": 2, "deploy": 2, "build error": 2, "env var": 2, "cron": 2,
-    "github action": 2, "localstorage": 2, "float": 1, "overflow": 2,
-    "typescript": 1, "seed": 1, "schema": 1,
+    "undici": 3, "user-agent": 2, "sec-fetch": 3, "403": 2, "rate limit": 2,
+    # charts and UI
+    "recharts": 3, "responsivecontainer": 3, "framer-motion": 3,
+    "tailwind": 2, "shadcn": 2, "radix": 2, "class-variance-authority": 2,
+    # ship-it problems
+    "vercel": 2, "build error": 3, "env var": 2, "cron": 2, "github action": 2,
+    "localstorage": 2, "overflow": 2, "i32": 3, "float": 2,
 }
 
-# one repo per request: batching them all blows GitHub's GraphQL complexity limit
+# deep-DBA territory: heavy Postgres-internals questions score high on raw
+# keyword overlap but you'd be researching an answer, not recalling one
+NOISE = {
+    "supabase_admin": 6, "pg_catalog": 6, "postgis": 6, "pg_net": 6,
+    "pgsodium": 6, "security definer": 5, "logical decoding": 5,
+    "tablespace": 5, "replication slot": 5, "wal": 4, "revoke": 4,
+    "privilege": 4, "role ownership": 4, "partition": 3, "grant": 3,
+    "vacuum": 4, "pg_dump": 3,
+}
+
+# project announcements dressed up as discussions — they match keywords
+# heavily, sit in answerable categories, and are never marked answered
+# "ProductName: what it does" — the standard shape of a project pitch
+PITCH_TITLE = re.compile(r"^[\w.\-+ ]{2,22}: [A-Za-z]")
+
+SHOWCASE = (
+    "i built", "i've built", "ive built", "i made", "i have built",
+    "introducing", "excited to share", "happy to share", "check out my",
+    "production-ready", "feedback welcome", "would love feedback",
+    "sharing my", "just shipped", "just launched", "show and tell",
+    "here's a", "i created", "open-sourced",
+)
+
 QUESTION_WORDS = {
     "how", "why", "what", "when", "where", "which", "who", "can", "cant",
     "does", "do", "is", "are", "should", "would", "could", "any", "help",
@@ -148,6 +177,9 @@ def score(d: dict, max_age_days: int) -> tuple[int, list[str], int]:
     body = d["bodyText"][:2000].lower()
 
     points, matched = 0, []
+    for keyword, weight in NOISE.items():
+        if keyword in title or keyword in body:
+            points -= weight
     for keyword, weight in EXPERTISE.items():
         if keyword in title:
             points += weight * 2
@@ -158,10 +190,18 @@ def score(d: dict, max_age_days: int) -> tuple[int, list[str], int]:
     if not matched:
         return 0, [], age
 
-    # showcase and RFC posts match keywords heavily but nobody marks them
-    # answered — reward things actually shaped like a question
+    # a showcase post can't be answered, so it can never count — drop it
+    if any(marker in title or marker in body[:800] for marker in SHOWCASE):
+        return 0, [], age
+    # ...as can a project pitch, unless it's actually asking something
+    if (PITCH_TITLE.match(d["title"])
+            and "?" not in title
+            and not set(title.split()) & QUESTION_WORDS):
+        return 0, [], age
+
+    # reward things actually shaped like a question
     asks = title.rstrip().endswith("?") or title.split(" ")[0] in QUESTION_WORDS
-    points += 3 if asks else -3
+    points += 3 if asks else -1
 
     # fresher questions are likelier to get an answer marked — the asker is
     # still around and still stuck

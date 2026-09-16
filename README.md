@@ -42,9 +42,17 @@ in a category that can never be marked answered, and ranks what's left by how
 well it matches your shipped experience, how fresh it is, and whether anyone
 has replied yet.
 
-Edit `EXPERTISE` in the script to match what you can genuinely defend —
-anything outside it scores zero and drops off the list. `REPOS` is the scan
-list.
+Three knobs in the script:
+
+- `EXPERTISE` — keyword: weight, for what you can genuinely defend. Anything
+  outside it scores zero and drops off the list.
+- `NOISE` — subtracts. Deep Postgres-internals questions overlap heavily with
+  app-level Supabase vocabulary but need research, not recall.
+- `REPOS` — the scan list.
+
+Project pitches (`ProductName: what it does`, "I built…", "feedback welcome")
+are dropped outright. They sit in answerable categories and match keywords
+hard, but nobody ever marks them as answered.
 
 [`.github/workflows/galaxy-radar.yml`](.github/workflows/galaxy-radar.yml)
 runs it every Monday and files the shortlist as an issue.
