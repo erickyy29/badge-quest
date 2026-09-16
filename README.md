@@ -50,6 +50,11 @@ Three knobs in the script:
   app-level Supabase vocabulary but need research, not recall.
 - `REPOS` — the scan list.
 
+Threads the asker already solved in a comment are dropped too. GitHub only
+counts a discussion as answered when someone *marks* an answer, so a thread
+that ends in "Solved — root cause was…" still comes back as unanswered, and
+nothing you post there can ever be marked.
+
 Two layers keep project pitches out. `BLOCKED_CATEGORIES` drops whole
 categories that never produce answers — `vercel/next.js` marks *Show and
 tell* as answerable, so the API's own `isAnswerable` flag isn't enough on its

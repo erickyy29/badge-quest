@@ -89,6 +89,17 @@ BLOCKED_CATEGORIES = {
 # with an em dash or a colon, optionally wrapped in backticks
 PITCH_TITLE = re.compile(r"^[`\w.\-+ ]{2,24}\s*[:—–]\s*[A-Za-z]")
 
+# the asker saying they worked it out. GitHub only counts a discussion as
+# answered when someone MARKS an answer, so threads the author already solved
+# in a comment still come back as unanswered — and nothing you post there can
+# ever be marked
+SELF_SOLVED = (
+    "root cause was", "figured it out", "figured this out", "fixed it",
+    "the fix was", "turned out to be", "found the issue", "found the problem",
+    "found the cause", "nevermind", "never mind", "no longer an issue",
+    "this is resolved", "issue is resolved", "my mistake", "solved it",
+)
+
 SHOWCASE = (
     "i built", "i've built", "ive built", "i made", "i have built",
     "introducing", "excited to share", "happy to share", "check out my",
@@ -112,7 +123,8 @@ QUERY = """{
     discussions(first: 30, answered: false, orderBy: {field: CREATED_AT, direction: DESC}) {
       nodes {
         title url createdAt upvoteCount bodyText
-        comments { totalCount }
+        author { login }
+        comments(first: 5) { totalCount nodes { author { login } bodyText } }
         category { name isAnswerable }
       }
     }
@@ -205,6 +217,16 @@ def score(d: dict, max_age_days: int) -> tuple[int, list[str], int]:
             matched.append(keyword)
     if not matched:
         return 0, [], age
+
+    # the asker already worked it out in the thread — nothing to answer
+    asker = (d.get("author") or {}).get("login")
+    for comment in d["comments"]["nodes"]:
+        by = (comment.get("author") or {}).get("login")
+        text = comment["bodyText"].strip().lower()
+        if by and by == asker and (
+            text.startswith("solved") or any(m in text for m in SELF_SOLVED)
+        ):
+            return 0, [], age
 
     # a showcase post can't be answered, so it can never count — drop it
     if any(marker in title or marker in body[:800] for marker in SHOWCASE):
