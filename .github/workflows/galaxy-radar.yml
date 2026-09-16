@@ -1,0 +1,38 @@
+name: Galaxy Brain radar
+
+# Weekly shortlist of unanswered questions worth answering, filed as an issue.
+# Finding the questions is the automatable half; writing the answers is not.
+on:
+  schedule:
+    - cron: "0 13 * * 1" # Mondays, 9am Toronto
+  workflow_dispatch:
+
+permissions:
+  issues: write
+
+jobs:
+  radar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Scan discussions
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: python3 galaxy_radar.py --top 10 --markdown > body.md
+
+      - name: File the shortlist
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ ! -s body.md ]; then
+            echo "nothing matched this week"
+            exit 0
+          fi
+          gh issue create \
+            --title "Galaxy Brain radar — week of $(date -u +%Y-%m-%d)" \
+            --body-file body.md \
+            --label galaxy-brain 2>/dev/null \
+          || gh issue create \
+            --title "Galaxy Brain radar — week of $(date -u +%Y-%m-%d)" \
+            --body-file body.md
