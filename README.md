@@ -12,8 +12,8 @@ Example output:
 ```
 GitHub Achievements — erickyy29
 ========================================
-  Pull Shark             ✓ x2  (82 merged PRs, next tier at 128)
-  Pair Extraordinaire    ✓ x1  (next tier at 10)
+  Pull Shark             ✓ x3  (162 merged PRs, next tier at 1024)
+  Pair Extraordinaire    ✓ x3  (next tier at 48)
   Galaxy Brain           ✓ x1  (next tier at 8)
   Starstruck             ✗ not earned  (first tier at 16)
   Quickdraw              ✓ x1 (MAXED)
@@ -24,6 +24,30 @@ GitHub Achievements — erickyy29
 No dependencies, no tokens — it reads the public achievements tab. If the
 [`gh` CLI](https://cli.github.com/) is installed and logged in, Pull Shark
 also shows your exact merged-PR count.
+
+## Galaxy Brain radar
+
+Galaxy Brain is the one badge that can't be ground out — it only ticks when a
+discussion author marks *your* reply as the answer, and only in Q&A-style
+categories. The automatable half is finding questions worth answering:
+
+```bash
+python3 galaxy_radar.py              # top 12, last 45 days
+python3 galaxy_radar.py --top 25     # cast wider
+python3 galaxy_radar.py --markdown   # checklist for an issue
+```
+
+It scans the discussions of the repos you actually build on, drops anything
+in a category that can never be marked answered, and ranks what's left by how
+well it matches your shipped experience, how fresh it is, and whether anyone
+has replied yet.
+
+Edit `EXPERTISE` in the script to match what you can genuinely defend —
+anything outside it scores zero and drops off the list. `REPOS` is the scan
+list.
+
+[`.github/workflows/galaxy-radar.yml`](.github/workflows/galaxy-radar.yml)
+runs it every Monday and files the shortlist as an issue.
 
 ## Tier thresholds
 
