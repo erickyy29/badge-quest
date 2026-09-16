@@ -77,8 +77,17 @@ NOISE = {
 
 # project announcements dressed up as discussions — they match keywords
 # heavily, sit in answerable categories, and are never marked answered
-# "ProductName: what it does" — the standard shape of a project pitch
-PITCH_TITLE = re.compile(r"^[\w.\-+ ]{2,22}: [A-Za-z]")
+# Categories that can't produce a Galaxy Brain answer no matter what the API
+# says. vercel/next.js marks "Show and tell" answerable, which let every
+# project announcement in the repo through the isAnswerable check.
+BLOCKED_CATEGORIES = {
+    "show and tell", "feature requests", "ideas", "rfc", "polls", "feedback",
+    "announcements", "jobs board", "changelog", "general",
+}
+
+# "ProductName: what it does" — the standard shape of a project pitch,
+# with an em dash or a colon, optionally wrapped in backticks
+PITCH_TITLE = re.compile(r"^[`\w.\-+ ]{2,24}\s*[:—–]\s*[A-Za-z]")
 
 SHOWCASE = (
     "i built", "i've built", "ive built", "i made", "i have built",
@@ -173,8 +182,11 @@ def score(d: dict, max_age_days: int) -> tuple[int, list[str], int]:
     created = datetime.fromisoformat(d["createdAt"].replace("Z", "+00:00"))
     age = (datetime.now(timezone.utc) - created).days
 
-    # only answerable categories can ever be marked as answered
+    # only answerable categories can ever be marked as answered — and not
+    # every category the API calls answerable actually produces answers
     if not d["category"]["isAnswerable"] or age > max_age_days:
+        return 0, [], age
+    if d["category"]["name"].strip().lower() in BLOCKED_CATEGORIES:
         return 0, [], age
 
     title = d["title"].lower()

@@ -50,9 +50,11 @@ Three knobs in the script:
   app-level Supabase vocabulary but need research, not recall.
 - `REPOS` — the scan list.
 
-Project pitches (`ProductName: what it does`, "I built…", "feedback welcome")
-are dropped outright. They sit in answerable categories and match keywords
-hard, but nobody ever marks them as answered.
+Two layers keep project pitches out. `BLOCKED_CATEGORIES` drops whole
+categories that never produce answers — `vercel/next.js` marks *Show and
+tell* as answerable, so the API's own `isAnswerable` flag isn't enough on its
+own. Title and body heuristics catch the promos posted inside genuine Help
+categories ("Free Beta key: Help testing…" was ranking in the top 12).
 
 [`.github/workflows/galaxy-radar.yml`](.github/workflows/galaxy-radar.yml)
 runs it every Monday and files the shortlist as an issue.
